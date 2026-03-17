@@ -273,6 +273,15 @@ Once your MCP client is running, you can ask your AI assistant:
 **`uv: command not found`**
 → Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` then restart your terminal.
 
+→ On Ubuntu/Linux, uv installs to `~/.local/bin` which may not be in your `PATH`. Fix it by creating a symlink:
+```bash
+sudo ln -s ~/.local/bin/uv /usr/local/bin/uv
+```
+Then verify with `uv --version`. If you prefer not to use sudo, add `~/.local/bin` to your PATH instead:
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
 ---
 
 ## License

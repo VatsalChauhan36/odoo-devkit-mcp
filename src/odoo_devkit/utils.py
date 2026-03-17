@@ -64,8 +64,12 @@ def run_rg(
         cmd = ["rg", "-n", "--no-heading", "--color", "never"]
         if fixed_strings:
             cmd.append("-F")
-        for glob in globs:
-            cmd.extend(["-g", glob])
+        # Only apply glob filters when searching directories; skip for explicit files
+        # (rg ignores -g when given a file path directly)
+        all_files = all(path.is_file() for path in roots)
+        if not all_files:
+            for glob in globs:
+                cmd.extend(["-g", glob])
         cmd.append(pattern)
         cmd.extend([str(path) for path in roots])
 
@@ -87,12 +91,16 @@ def run_rg(
     # Fallback path: pure Python scan when rg is not installed.
     regex = None if fixed_strings else re.compile(pattern)
     for root in roots:
-        for file_path in root.rglob("*"):
-            if not file_path.is_file():
-                continue
-            rel = str(file_path.relative_to(root)).replace("\\", "/")
-            if globs and not any(fnmatch.fnmatch(rel, glob) for glob in globs):
-                continue
+        # Support individual files passed directly (not just directories)
+        if root.is_file():
+            candidates = [root]
+        else:
+            candidates = (p for p in root.rglob("*") if p.is_file())
+        for file_path in candidates:
+            if root.is_dir():
+                rel = str(file_path.relative_to(root)).replace("\\", "/")
+                if globs and not any(fnmatch.fnmatch(rel, glob) for glob in globs):
+                    continue
             try:
                 with file_path.open("r", encoding="utf-8", errors="replace") as handle:
                     for idx, line in enumerate(handle, start=1):
