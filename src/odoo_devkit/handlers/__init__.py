@@ -8,6 +8,7 @@ from . import (
     actions_menus,
     model,
     modules,
+    recursive,
     scaffold,
     search,
     security,
@@ -26,6 +27,7 @@ _HANDLERS = [
     security,
     scaffold,
     search,
+    recursive,
     validate,
     upgrade,
 ]
