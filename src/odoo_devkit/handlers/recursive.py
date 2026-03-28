@@ -4,7 +4,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json, run_rg
+from ..utils import to_toon, run_rg
 from .helpers import _discover_modules, _find_module_for_file, _scope_for_module
 
 
@@ -66,7 +66,7 @@ def _glob_odoo_files(
     return [
         TextContent(
             type="text",
-            text=compact_json({
+            text=to_toon({
                 "pattern": pattern,
                 "module_filter": module_filter or None,
                 "count": len(results),
@@ -110,7 +110,7 @@ def _get_module_structure(
     return [
         TextContent(
             type="text",
-            text=compact_json({
+            text=to_toon({
                 "module": module_name,
                 "path": str(module_path),
                 "scope": scope,
@@ -153,7 +153,7 @@ def _find_method_definition(
             return [
                 TextContent(
                     type="text",
-                    text=compact_json({
+                    text=to_toon({
                         "method_name": method_name,
                         "model": model_filter,
                         "count": 0,
@@ -185,7 +185,7 @@ def _find_method_definition(
     return [
         TextContent(
             type="text",
-            text=compact_json({
+            text=to_toon({
                 "method_name": method_name,
                 "model": model_filter or None,
                 "count": len(enriched),

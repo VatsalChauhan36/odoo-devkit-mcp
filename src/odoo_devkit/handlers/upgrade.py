@@ -4,7 +4,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json
+from ..utils import to_toon
 
 
 def handle(
@@ -21,14 +21,14 @@ def handle(
         config_file = arguments.get("config_file") or ""
 
         if not odoo_bin:
-            return [TextContent(type="text", text=compact_json({
+            return [TextContent(type="text", text=to_toon({
                 "error": "odoo_bin is required. Provide the path to your odoo-bin executable.",
             }))]
         db = arguments.get("database", "")
 
         odoo_bin_path = Path(odoo_bin)
         if not odoo_bin_path.exists():
-            return [TextContent(type="text", text=compact_json({"error": f"odoo-bin not found at: {odoo_bin}"}))]
+            return [TextContent(type="text", text=to_toon({"error": f"odoo-bin not found at: {odoo_bin}"}))]
 
         flag = "-u" if mode == "update" else "-i"
         cmd = [str(odoo_bin_path), flag, module, "--stop-after-init"]
@@ -53,7 +53,7 @@ def handle(
             return [
                 TextContent(
                     type="text",
-                    text=compact_json({
+                    text=to_toon({
                         "module": module,
                         "mode": mode,
                         "command": " ".join(cmd),
@@ -65,8 +65,8 @@ def handle(
                 )
             ]
         except subprocess.TimeoutExpired:
-            return [TextContent(type="text", text=compact_json({"error": "Upgrade timed out after 120s", "module": module}))]
+            return [TextContent(type="text", text=to_toon({"error": "Upgrade timed out after 120s", "module": module}))]
         except OSError as exc:
-            return [TextContent(type="text", text=compact_json({"error": str(exc), "module": module}))]
+            return [TextContent(type="text", text=to_toon({"error": str(exc), "module": module}))]
 
     return None

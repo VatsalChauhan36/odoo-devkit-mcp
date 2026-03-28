@@ -3,7 +3,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json
+from ..utils import to_toon
 from .helpers import (
     _collect_action_records,
     _collect_menu_records,
@@ -25,7 +25,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "model": target,
                         "count": len(matches[:limit]),
@@ -102,7 +102,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "ref": target,
                         "target_actions": sorted(target_action_ids),

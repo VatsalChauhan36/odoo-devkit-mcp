@@ -3,7 +3,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json
+from ..utils import to_toon
 from .helpers import _discover_modules, _parse_manifest
 
 
@@ -31,7 +31,7 @@ def handle(
             "modules": names[:limit],
         }
         result["scope"] = "custom" if name == "list_custom_modules" else "all"
-        return [TextContent(type="text", text=compact_json(result))]
+        return [TextContent(type="text", text=to_toon(result))]
 
     if name == "get_module_manifest":
         module = arguments.get("module")
@@ -44,6 +44,6 @@ def handle(
             "path": str(modules[module]),
             "manifest": _parse_manifest(modules[module]),
         }
-        return [TextContent(type="text", text=compact_json(result))]
+        return [TextContent(type="text", text=to_toon(result))]
 
     return None

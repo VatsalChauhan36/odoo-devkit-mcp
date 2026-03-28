@@ -18,6 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=1.23.0",
+    "toons>=0.5.3",
 ]
 
 [project.urls]

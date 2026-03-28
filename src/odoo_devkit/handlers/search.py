@@ -4,7 +4,7 @@ from typing import Any, Sequence
 from mcp.types import TextContent
 
 from ..constants import ODOO_DOCS_PATH
-from ..utils import assert_allowed_path, compact_json, run_rg
+from ..utils import assert_allowed_path, to_toon, run_rg
 from .helpers import _read_file_lines
 
 
@@ -28,7 +28,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json({"query": query, "glob": glob, "module_filter": module_filter or None, "matches": matches}),
+                text=to_toon({"query": query, "glob": glob, "module_filter": module_filter or None, "matches": matches}),
             )
         ]
 
@@ -44,7 +44,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(_read_file_lines(safe, start, end, max_lines)),
+                text=to_toon(_read_file_lines(safe, start, end, max_lines)),
             )
         ]
 
@@ -54,16 +54,16 @@ def handle(
             raise ValueError("query is required")
         limit = int(arguments.get("limit", 20))
         if ODOO_DOCS_PATH is None:
-            return [TextContent(type="text", text=compact_json({
+            return [TextContent(type="text", text=to_toon({
                 "error": "ODOO_MCP_DOCS_PATH environment variable is not set.",
                 "hint": "Clone https://github.com/odoo/documentation and set ODOO_MCP_DOCS_PATH to its path.",
             }))]
         if not ODOO_DOCS_PATH.exists():
-            return [TextContent(type="text", text=compact_json({
+            return [TextContent(type="text", text=to_toon({
                 "error": f"Docs path does not exist: {ODOO_DOCS_PATH}",
                 "hint": "Check that ODOO_MCP_DOCS_PATH points to a valid directory.",
             }))]
         matches = run_rg(query, [ODOO_DOCS_PATH.resolve()], ["*.rst", "*.md"], limit=limit)
-        return [TextContent(type="text", text=compact_json({"query": query, "matches": matches}))]
+        return [TextContent(type="text", text=to_toon({"query": query, "matches": matches}))]
 
     return None

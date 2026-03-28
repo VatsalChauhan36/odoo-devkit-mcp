@@ -4,7 +4,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json, run_rg
+from ..utils import to_toon, run_rg
 from .helpers import (
     _enrich_model_matches,
     _find_module_for_file,
@@ -63,7 +63,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {"model": model, "matches": all_matches, "related_files": related_files}
                 ),
             )
@@ -130,7 +130,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json({
+                text=to_toon({
                     "model": model,
                     "field_count": len(results),
                     "source_files": sorted(model_files),

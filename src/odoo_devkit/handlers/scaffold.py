@@ -3,7 +3,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json
+from ..utils import to_toon
 from .helpers import (
     _append_manifest_data_entries,
     _append_manifest_data_entry,
@@ -88,7 +88,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "module": module,
                         "target_xml_path": abs_xml,
@@ -230,7 +230,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "module": module,
                         "model": model,
@@ -271,7 +271,7 @@ def handle(
             new = "\n".join(lines).rstrip("\n") + "\n"
             parts = [_build_full_replace_patch(init_path, old, new)] if init_path.exists() else [_build_add_file_patch(init_path, new)]
             patch = _patch_document(parts)
-        return [TextContent(type="text", text=compact_json({"module": module, "init_path": str(init_path), "patch": patch}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "init_path": str(init_path), "patch": patch}))]
 
     if name == "manifest_update_patch":
         module = arguments.get("module")
@@ -287,7 +287,7 @@ def handle(
             manifest_path, [str(x) for x in data_files]
         )
         patch = _patch_document([manifest_patch] if manifest_patch else [])
-        return [TextContent(type="text", text=compact_json({"module": module, "manifest_path": str(manifest_path), "patch": patch}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "manifest_path": str(manifest_path), "patch": patch}))]
 
     if name == "scaffold_inherit_model_patch":
         module = arguments.get("module")
@@ -340,7 +340,7 @@ def handle(
                 new_init = (old_init.rstrip("\n") + "\n" + import_line + "\n").lstrip("\n")
                 parts.append(_build_full_replace_patch(init_path, old_init, new_init) if init_path.exists() else _build_add_file_patch(init_path, new_init))
         patch = _patch_document(parts)
-        return [TextContent(type="text", text=compact_json({"module": module, "inherit_model": inherit_model, "target_python_path": str(abs_py), "patch": patch}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "inherit_model": inherit_model, "target_python_path": str(abs_py), "patch": patch}))]
 
     if name == "scaffold_views_patch":
         module = arguments.get("module")
@@ -379,7 +379,7 @@ def handle(
                 )
                 parts.append(_build_full_replace_patch(menu_abs, menu_abs.read_text(encoding="utf-8", errors="replace"), menu_payload) if menu_abs.exists() else _build_add_file_patch(menu_abs, menu_payload))
         patch = _patch_document(parts)
-        return [TextContent(type="text", text=compact_json({"module": module, "model": model, "target_xml_path": str(abs_xml), "patch": patch}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "model": model, "target_xml_path": str(abs_xml), "patch": patch}))]
 
     if name == "scaffold_action_patch":
         module = arguments.get("module")
@@ -399,7 +399,7 @@ def handle(
         abs_path = (modules[module] / rel).resolve()
         payload = _default_action_xml_payload(action_id, action_name, model, view_mode, context, domain)
         part = _build_full_replace_patch(abs_path, abs_path.read_text(encoding="utf-8", errors="replace"), payload) if abs_path.exists() else _build_add_file_patch(abs_path, payload)
-        return [TextContent(type="text", text=compact_json({"module": module, "action_id": action_id, "target_xml_path": str(abs_path), "patch": _patch_document([part])}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "action_id": action_id, "target_xml_path": str(abs_path), "patch": _patch_document([part])}))]
 
     if name == "scaffold_menu_patch":
         module = arguments.get("module")
@@ -424,7 +424,7 @@ def handle(
         line += "/>"
         payload = f"<?xml version='1.0' encoding='utf-8'?>\n<odoo>\n    <data>\n{line}\n    </data>\n</odoo>\n"
         part = _build_full_replace_patch(abs_path, abs_path.read_text(encoding="utf-8", errors="replace"), payload) if abs_path.exists() else _build_add_file_patch(abs_path, payload)
-        return [TextContent(type="text", text=compact_json({"module": module, "menu_id": menu_id, "target_xml_path": str(abs_path), "patch": _patch_document([part])}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "menu_id": menu_id, "target_xml_path": str(abs_path), "patch": _patch_document([part])}))]
 
     if name == "scaffold_security_access_patch":
         module = arguments.get("module")
@@ -463,7 +463,7 @@ def handle(
             part = _build_full_replace_patch(abs_path, old, new)
         else:
             part = _build_add_file_patch(abs_path, header + new_rows)
-        return [TextContent(type="text", text=compact_json({"module": module, "model": model, "target_csv_path": str(abs_path), "patch": _patch_document([part])}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "model": model, "target_csv_path": str(abs_path), "patch": _patch_document([part])}))]
 
     if name == "scaffold_record_rule_patch":
         module = arguments.get("module")
@@ -492,7 +492,7 @@ def handle(
             "        </record>\n    </data>\n</odoo>\n"
         )
         part = _build_full_replace_patch(abs_path, abs_path.read_text(encoding="utf-8", errors="replace"), payload) if abs_path.exists() else _build_add_file_patch(abs_path, payload)
-        return [TextContent(type="text", text=compact_json({"module": module, "rule_id": rule_id, "target_xml_path": str(abs_path), "patch": _patch_document([part])}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "rule_id": rule_id, "target_xml_path": str(abs_path), "patch": _patch_document([part])}))]
 
     if name == "scaffold_wizard_patch":
         module = arguments.get("module")
@@ -532,7 +532,7 @@ def handle(
                 menu_path = (module_path / f"wizard/{stem}_menu.xml").resolve()
                 menu_payload = f"<?xml version='1.0' encoding='utf-8'?>\n<odoo>\n    <data>\n        <menuitem id=\"menu_{stem}\" name=\"{description}\" action=\"{module}.action_{stem}\"/>\n    </data>\n</odoo>\n"
                 parts.append(_build_full_replace_patch(menu_path, menu_path.read_text(encoding="utf-8", errors="replace"), menu_payload) if menu_path.exists() else _build_add_file_patch(menu_path, menu_payload))
-        return [TextContent(type="text", text=compact_json({"module": module, "model": model, "patch": _patch_document(parts)}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "model": model, "patch": _patch_document(parts)}))]
 
     if name == "scaffold_report_patch":
         module = arguments.get("module")
@@ -579,6 +579,6 @@ def handle(
             _build_full_replace_patch(xml_path, xml_path.read_text(encoding="utf-8", errors="replace"), xml_payload) if xml_path.exists() else _build_add_file_patch(xml_path, xml_payload),
             _build_full_replace_patch(action_path, action_path.read_text(encoding="utf-8", errors="replace"), action_payload) if action_path.exists() else _build_add_file_patch(action_path, action_payload),
         ]
-        return [TextContent(type="text", text=compact_json({"module": module, "report_id": report_id, "patch": _patch_document(parts)}))]
+        return [TextContent(type="text", text=to_toon({"module": module, "report_id": report_id, "patch": _patch_document(parts)}))]
 
     return None

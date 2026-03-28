@@ -1,5 +1,4 @@
 import fnmatch
-import json
 import os
 import re
 import shutil
@@ -7,12 +6,96 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+import toons
+
 from .constants import DEFAULT_ROOTS
 
 
-def compact_json(data: Any) -> str:
-    # Compact JSON keeps MCP responses token-efficient.
-    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+# Short-key map: verbose response key → compact key sent to LLM.
+# Keeps field names readable in code but token-efficient on the wire.
+_KEY_MAP: dict[str, str] = {
+    # ===== Core =====
+    "matches": "m",
+    "count": "n",
+    "total_matches": "tm",
+
+    # ===== File / Location =====
+    "path": "p",
+    "line": "l",
+    "module": "mo",
+
+    # ===== Content =====
+    "text": "t",
+    "scope": "sc",
+
+    # ===== Fields / Structure =====
+    "fields": "f",
+    "field_count": "fc",
+
+    # ===== Files =====
+    "source_files": "sf",
+    "related_files": "rf",
+    "total_files": "tf",
+
+    # ===== Errors / Warnings =====
+    "errors": "e",
+    "warnings": "w",
+    "error_count": "ec",
+    "warning_count": "wc",
+
+    # ===== Rules / Access =====
+    "rules": "rl",
+    "access": "ax",
+    "rule_count": "rc",
+    "access_count": "ac",
+
+    # ===== Execution =====
+    "patch": "px",
+    "returncode": "rcd",
+    "stdout_tail": "out",
+    "stderr_tail": "err",
+    "truncated": "tr",
+
+    # ===== Directory / Tree =====
+    "directories": "ds",
+    "chain": "ch",
+    "depth": "dp",
+    "ancestors": "an",
+    "children": "kd",
+
+    # ===== XML / View =====
+    "xml_id": "xid",
+    "inherit_id": "inh",
+    "view_ref": "vr",
+
+    # ===== Naming =====
+    "field_name": "fn",
+    "method_name": "mn",
+
+    # ===== Status =====
+    "success": "ok",
+    "valid": "v",
+
+    # ===== Target Paths =====
+    "target_xml_path": "txp",
+    "target_python_path": "tpp",
+    "target_csv_path": "tcp",
+
+    # ===== Rare (keep semi-readable) =====
+    "manifest_path": "manifest",
+    "init_path": "init",
+}
+
+def _compress_keys(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {_KEY_MAP.get(k, k): _compress_keys(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_compress_keys(item) for item in data]
+    return data
+
+
+def to_toon(data: Any) -> str:
+    return toons.dumps(_compress_keys(data))
 
 
 def load_roots(cli_roots: list[str] | None) -> list[Path]:

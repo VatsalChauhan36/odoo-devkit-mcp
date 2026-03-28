@@ -3,7 +3,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json, run_rg
+from ..utils import to_toon, run_rg
 from .helpers import (
     _collect_view_records,
     _find_module_for_file,
@@ -26,7 +26,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "view_ref": view_ref,
                         "count": len(matches[:limit]),
@@ -51,7 +51,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "view_ref": view_ref,
                         "targets": sorted(targets),
@@ -83,7 +83,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "model": target,
                         "count": len(matches[:limit]),
@@ -112,7 +112,7 @@ def handle(
             return [
                 TextContent(
                     type="text",
-                    text=compact_json({"view_ref": view_ref, "chain": []}),
+                    text=to_toon({"view_ref": view_ref, "chain": []}),
                 )
             ]
 
@@ -137,7 +137,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {"view_ref": view_ref, "count": len(out), "chain": out}
                 ),
             )
@@ -199,7 +199,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "field_name": field_name,
                         "model": model or None,

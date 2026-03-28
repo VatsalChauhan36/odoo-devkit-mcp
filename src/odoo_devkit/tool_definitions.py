@@ -12,19 +12,11 @@ TOOL_DEFINITIONS = [
     # ── Discovery & Navigation ──────────────────────────────────────────
     Tool(
         name="list_modules",
-        description=(
-            "List all Odoo modules (addons) discovered across all configured roots. "
-            "Use this as a starting point to explore what modules exist, "
-            "or to find a module by partial name (e.g. query='sale' finds sale, sale_subscription, etc.). "
-            "Returns module name, path, and scope (custom vs standard)."
-        ),
+        description="List all Odoo modules; filter by partial name.",
         inputSchema={
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Optional substring to filter module names (e.g. 'sale', 'stock', 'hr').",
-                },
+                "query": {"type": "string"},
                 "limit": {"type": "integer", "default": 50},
             },
         },
@@ -32,18 +24,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="list_custom_modules",
-        description=(
-            "List only YOUR custom modules (from the first configured addons root). "
-            "Use this when the user asks about 'my modules', 'our modules', or 'custom modules'. "
-            "Excludes Odoo standard/community modules."
-        ),
+        description="List only custom modules from primary addons root.",
         inputSchema={
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Optional substring to filter module names.",
-                },
+                "query": {"type": "string"},
                 "limit": {"type": "integer", "default": 50},
             },
         },
@@ -51,12 +36,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="get_module_manifest",
-        description=(
-            "Read an Odoo module's __manifest__.py and return its key metadata: "
-            "name, version, summary, depends, data files, assets, license, and application flag. "
-            "Use this to understand a module's dependencies, what data/view files it loads, "
-            "or whether it's an application."
-        ),
+        description="Read module __manifest__.py metadata.",
         inputSchema={
             "type": "object",
             "properties": {"module": {"type": "string"}},
@@ -66,14 +46,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="get_module_structure",
-        description=(
-            "Get a complete file tree for an Odoo module — lists all Python, XML, CSV, "
-            "and other files organized by directory (models/, views/, security/, data/, "
-            "wizard/, report/, static/, etc.). "
-            "This should be the FIRST tool to call when exploring an unfamiliar module. "
-            "Prefer this over glob_odoo_files when you already know the module name "
-            "and want to understand its full layout before reading or editing files."
-        ),
+        description="Get full file tree for a module by directory.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -86,18 +59,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="read_file_lines",
-        description=(
-            "Read lines from any file inside the configured Odoo addons roots. "
-            "Use this to read Python source code, XML views, CSV security files, or any other file. "
-            "Specify start/end line numbers to read a specific section of a large file."
-        ),
+        description="Read lines from a file inside addons roots.",
         inputSchema={
             "type": "object",
             "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "Absolute or relative path to the file.",
-                },
+                "path": {"type": "string"},
                 "start": {"type": "integer", "default": 1},
                 "end": {"type": "integer", "default": 120},
                 "max_lines": {"type": "integer", "default": 120},
@@ -110,38 +76,15 @@ TOOL_DEFINITIONS = [
     # ── Search ──────────────────────────────────────────────────────────
     Tool(
         name="search_odoo_code",
-        description=(
-            "Search for any text or regex pattern across the entire Odoo codebase using ripgrep. "
-            "This is the PRIMARY general-purpose search tool — use it whenever you need to find "
-            "method calls, field references, imports, string literals, error messages, "
-            "class definitions, or any code pattern. "
-            "Supports glob filters (e.g. '*.xml' for XML only, '*.py' for Python only). "
-            "Use module_filter to restrict to a single module. "
-            "NOTE: For finding method DEFINITIONS specifically, prefer find_method_definition. "
-            "For finding FILES by name/path pattern, prefer glob_odoo_files."
-        ),
+        description="Regex/text search across Odoo codebase via ripgrep.",
         inputSchema={
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Text or regex pattern to search for.",
-                },
-                "glob": {
-                    "type": "string",
-                    "default": "*.py",
-                    "description": "File type filter: '*.py' (default), '*.xml', '*.csv', '*.js', or '*' for all files.",
-                },
+                "query": {"type": "string"},
+                "glob": {"type": "string", "default": "*.py"},
                 "limit": {"type": "integer", "default": 30},
-                "fixed_strings": {
-                    "type": "boolean",
-                    "default": True,
-                    "description": "If true, treat query as literal text. Set to false to use regex.",
-                },
-                "module_filter": {
-                    "type": "string",
-                    "description": "Optional module name to restrict the search scope (e.g. 'sale', 'point_of_sale').",
-                },
+                "fixed_strings": {"type": "boolean", "default": True},
+                "module_filter": {"type": "string"},
             },
             "required": ["query"],
         },
@@ -149,20 +92,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="search_odoo_docs",
-        description=(
-            "Search the local Odoo documentation (RST/Markdown files) for a topic. "
-            "Use this when the user asks about Odoo APIs, ORM methods, view architecture, "
-            "QWeb syntax, or other framework concepts. "
-            "Requires the ODOO_MCP_DOCS_PATH environment variable to point to a cloned "
-            "https://github.com/odoo/documentation repository."
-        ),
+        description="Search local Odoo RST/Markdown documentation files.",
         inputSchema={
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Topic or keyword to search in the docs (e.g. 'compute field', 'onchange', 'QWeb').",
-                },
+                "query": {"type": "string"},
                 "limit": {"type": "integer", "default": 20},
             },
             "required": ["query"],
@@ -171,25 +105,13 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="glob_odoo_files",
-        description=(
-            "Find files by glob pattern across all Odoo addons roots. "
-            "Use this to locate files by extension or directory convention, e.g.: "
-            "'**/models/*.py' (all model files), '**/views/*.xml' (all view files), "
-            "'**/__manifest__.py' (all manifests), '**/static/src/**/*.js' (all JS files). "
-            "For searching file CONTENTS, use search_odoo_code instead."
-        ),
+        description="Find files by glob pattern across addons roots.",
         inputSchema={
             "type": "object",
             "properties": {
-                "pattern": {
-                    "type": "string",
-                    "description": "Glob pattern, e.g. '**/*.py', '**/models/*.py', '**/views/*.xml'.",
-                },
+                "pattern": {"type": "string"},
                 "limit": {"type": "integer", "default": 200},
-                "module_filter": {
-                    "type": "string",
-                    "description": "Optional module name to restrict search scope.",
-                },
+                "module_filter": {"type": "string"},
             },
             "required": ["pattern"],
         },
@@ -199,21 +121,11 @@ TOOL_DEFINITIONS = [
     # ── Model & Field Analysis ──────────────────────────────────────────
     Tool(
         name="find_model_definition",
-        description=(
-            "Find where an Odoo model is defined (_name = '...') and extended (_inherit = '...'). "
-            "This should be the FIRST tool to call when the user asks about a specific model "
-            "like 'sale.order', 'res.partner', etc. "
-            "Returns the file paths, line numbers, and which module defines or inherits the model, "
-            "plus a list of related files (views, security, data) in those modules. "
-            "For listing a model's fields, use get_model_fields instead."
-        ),
+        description="Find where a model is defined or inherited (_name/_inherit).",
         inputSchema={
             "type": "object",
             "properties": {
-                "model": {
-                    "type": "string",
-                    "description": "Odoo model technical name, e.g. 'sale.order', 'res.partner', 'account.move'.",
-                },
+                "model": {"type": "string"},
                 "limit": {"type": "integer", "default": 20},
                 "include_related_files": {"type": "boolean", "default": True},
                 "related_files_limit": {"type": "integer", "default": 60},
@@ -224,20 +136,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="get_model_fields",
-        description=(
-            "List all fields declared on an Odoo model across all modules that define or inherit it. "
-            "Returns each field's name, type (Char, Many2one, etc.), the file and line where it's declared, "
-            "and which module it belongs to. "
-            "Use this to understand a model's data structure, check if a field exists, "
-            "or find where a specific field is defined."
-        ),
+        description="List all fields declared on a model across modules.",
         inputSchema={
             "type": "object",
             "properties": {
-                "model": {
-                    "type": "string",
-                    "description": "Odoo model technical name, e.g. 'sale.order', 'res.partner'.",
-                },
+                "model": {"type": "string"},
                 "limit": {"type": "integer", "default": 200},
             },
             "required": ["model"],
@@ -246,25 +149,12 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_method_definition",
-        description=(
-            "Find where a Python method is defined across Odoo modules. "
-            "Use this when looking for a specific method like '_compute_amount_total', "
-            "'action_confirm', 'write', 'create', or to find all overrides of a method. "
-            "Searches for 'def method_name' patterns in Python files. "
-            "Optionally filter by model name to narrow results to files that define/inherit that model. "
-            "Prefer this over search_odoo_code when specifically looking for method definitions."
-        ),
+        description="Find Python method definitions (def name) in Odoo files.",
         inputSchema={
             "type": "object",
             "properties": {
-                "method_name": {
-                    "type": "string",
-                    "description": "Method name to find, e.g. '_compute_amount_total', 'action_confirm', 'write'.",
-                },
-                "model": {
-                    "type": "string",
-                    "description": "Optional Odoo model name to narrow search to files defining/inheriting this model.",
-                },
+                "method_name": {"type": "string"},
+                "model": {"type": "string"},
                 "limit": {"type": "integer", "default": 30},
             },
             "required": ["method_name"],
@@ -273,19 +163,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_xml_id_definition",
-        description=(
-            "Find where an XML external ID (e.g. 'sale.view_order_form', 'base.group_user') "
-            "is defined in XML data files. "
-            "Use this to locate a specific record definition by its XML ID — views, actions, menus, "
-            "security groups, record rules, or any data record."
-        ),
+        description="Find where an XML external ID is defined in data files.",
         inputSchema={
             "type": "object",
             "properties": {
-                "xml_id": {
-                    "type": "string",
-                    "description": "The external ID to search for, e.g. 'sale.view_order_form', 'base.group_user'.",
-                },
+                "xml_id": {"type": "string"},
                 "limit": {"type": "integer", "default": 20},
             },
             "required": ["xml_id"],
@@ -294,23 +176,12 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_field_in_views",
-        description=(
-            "Find all XML views that reference a specific field — in <field> tags, "
-            "xpath expressions, domains, or attrs. "
-            "Use this before renaming or removing a field to check its view-level usage, "
-            "or to understand where a field appears in the UI."
-        ),
+        description="Find XML views referencing a field (tags, xpath, domains).",
         inputSchema={
             "type": "object",
             "properties": {
-                "field_name": {
-                    "type": "string",
-                    "description": "The field name, e.g. 'partner_id', 'amount_total', 'state'.",
-                },
-                "model": {
-                    "type": "string",
-                    "description": "Optional model name to narrow results to views of that model.",
-                },
+                "field_name": {"type": "string"},
+                "model": {"type": "string"},
                 "limit": {"type": "integer", "default": 100},
             },
             "required": ["field_name"],
@@ -319,19 +190,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_security_access_for_model",
-        description=(
-            "Find all security rules for a model: both ir.model.access.csv entries (CRUD permissions) "
-            "and ir.rule records (domain-based record rules). "
-            "Use this to audit who can read/write/create/delete records of a model, "
-            "or to check what record rules apply."
-        ),
+        description="Find access rights and record rules for a model.",
         inputSchema={
             "type": "object",
             "properties": {
-                "model": {
-                    "type": "string",
-                    "description": "Odoo model technical name, e.g. 'sale.order'.",
-                },
+                "model": {"type": "string"},
                 "limit": {"type": "integer", "default": 120},
             },
             "required": ["model"],
@@ -342,21 +205,11 @@ TOOL_DEFINITIONS = [
     # ── View Navigation ─────────────────────────────────────────────────
     Tool(
         name="find_view_definition",
-        description=(
-            "Find an Odoo view (ir.ui.view) by its XML ID, view name, or model name. "
-            "Use this to locate a specific view when you know its identifier, "
-            "e.g. 'sale.view_order_form' or 'sale.order'. "
-            "Returns the view's XML ID, model, inherit_id, file path, and module. "
-            "For listing ALL views of a model, prefer find_view_by_model. "
-            "For tracing inheritance, prefer find_view_chain."
-        ),
+        description="Find a view by XML ID, name, or model.",
         inputSchema={
             "type": "object",
             "properties": {
-                "view_ref": {
-                    "type": "string",
-                    "description": "XML ID (e.g. 'sale.view_order_form'), view name, or model name.",
-                },
+                "view_ref": {"type": "string"},
                 "limit": {"type": "integer", "default": 40},
             },
             "required": ["view_ref"],
@@ -365,18 +218,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_inherited_views",
-        description=(
-            "Find all views that inherit from (extend) a given view. "
-            "Use this to see which modules modify a base view — e.g. what modules add fields "
-            "to the sale order form, or who overrides a list view."
-        ),
+        description="Find views that inherit/extend a given base view.",
         inputSchema={
             "type": "object",
             "properties": {
-                "view_ref": {
-                    "type": "string",
-                    "description": "The base view XML ID to find inheritors for, e.g. 'sale.view_order_form'.",
-                },
+                "view_ref": {"type": "string"},
                 "limit": {"type": "integer", "default": 60},
             },
             "required": ["view_ref"],
@@ -385,18 +231,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_view_by_model",
-        description=(
-            "Find ALL views registered for a specific model — form, list, search, kanban, etc. "
-            "Use this to get an overview of all UI representations for a model "
-            "(e.g. all views for 'product.template')."
-        ),
+        description="List all views (form/list/search/kanban) for a model.",
         inputSchema={
             "type": "object",
             "properties": {
-                "model": {
-                    "type": "string",
-                    "description": "Odoo model technical name, e.g. 'sale.order', 'product.template'.",
-                },
+                "model": {"type": "string"},
                 "limit": {"type": "integer", "default": 80},
             },
             "required": ["model"],
@@ -405,18 +244,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_view_chain",
-        description=(
-            "Resolve the full inheritance chain for a view — from the base view through all "
-            "inherited layers in priority order. "
-            "Use this to understand the final composed view or to debug view inheritance issues."
-        ),
+        description="Resolve full view inheritance chain in priority order.",
         inputSchema={
             "type": "object",
             "properties": {
-                "view_ref": {
-                    "type": "string",
-                    "description": "The view XML ID to resolve the chain for.",
-                },
+                "view_ref": {"type": "string"},
                 "limit": {"type": "integer", "default": 120},
             },
             "required": ["view_ref"],
@@ -425,20 +257,12 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="validate_view_xml",
-        description=(
-            "Validate an XML view file for correctness: checks XML syntax, verifies that "
-            "field names used in the view actually exist on the model, and warns about "
-            "deprecated Odoo 16+ patterns (attrs, states attributes). "
-            "Use this after editing a view XML file to catch errors before upgrading the module."
-        ),
+        description="Validate XML view syntax and field references.",
         inputSchema={
             "type": "object",
             "properties": {
                 "module": {"type": "string"},
-                "xml_path": {
-                    "type": "string",
-                    "description": "Path to the XML file, relative to module root (e.g. 'views/my_view.xml').",
-                },
+                "xml_path": {"type": "string"},
             },
             "required": ["module", "xml_path"],
         },
@@ -448,18 +272,11 @@ TOOL_DEFINITIONS = [
     # ── Action & Menu Discovery ─────────────────────────────────────────
     Tool(
         name="find_action_by_model",
-        description=(
-            "Find window actions (ir.actions.act_window) for a model. "
-            "Use this to find how a model is opened in the UI — what action launches "
-            "the list/form view, what view_mode is used, and which module defines the action."
-        ),
+        description="Find ir.actions.act_window records for a model.",
         inputSchema={
             "type": "object",
             "properties": {
-                "model": {
-                    "type": "string",
-                    "description": "Odoo model technical name, e.g. 'sale.order'.",
-                },
+                "model": {"type": "string"},
                 "limit": {"type": "integer", "default": 80},
             },
             "required": ["model"],
@@ -468,18 +285,11 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_menu_hierarchy",
-        description=(
-            "Find menu items linked to an action, view, or model and trace the full "
-            "parent menu chain and children. "
-            "Use this to understand navigation: where in the Odoo menu tree a model/action appears."
-        ),
+        description="Find menu items and trace parent/child hierarchy.",
         inputSchema={
             "type": "object",
             "properties": {
-                "ref": {
-                    "type": "string",
-                    "description": "Menu XML ID, action XML ID, or model name to search for.",
-                },
+                "ref": {"type": "string"},
                 "limit": {"type": "integer", "default": 120},
             },
             "required": ["ref"],
@@ -490,13 +300,7 @@ TOOL_DEFINITIONS = [
     # ── Code Scaffolding (generates patches, does NOT modify files) ─────
     Tool(
         name="scaffold_model_patch",
-        description=(
-            "Generate a ready-to-apply patch for a NEW Odoo model. "
-            "Creates the Python file with model class, and optionally updates "
-            "models/__init__.py and __manifest__.py. "
-            "Can also include basic views and an ir.model.access.csv entry. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate patch for a new Odoo model Python file.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -509,20 +313,11 @@ TOOL_DEFINITIONS = [
                     "default": "Model",
                 },
                 "inherit_model": {"type": "string"},
-                "field_snippets": {
-                    "type": "string",
-                    "description": "Optional multiline field declarations.",
-                },
-                "target_python_path": {
-                    "type": "string",
-                    "description": "Optional target path relative to module root.",
-                },
+                "field_snippets": {"type": "string"},
+                "target_python_path": {"type": "string"},
                 "include_init_update": {"type": "boolean", "default": True},
                 "include_manifest_update": {"type": "boolean", "default": False},
-                "manifest_data_file": {
-                    "type": "string",
-                    "description": "Optional data file to append in manifest data list.",
-                },
+                "manifest_data_file": {"type": "string"},
                 "include_basic_views": {"type": "boolean", "default": False},
                 "include_access_csv": {"type": "boolean", "default": False},
             },
@@ -532,11 +327,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_inherit_model_patch",
-        description=(
-            "Generate a patch to EXTEND an existing Odoo model (via _inherit). "
-            "Use this when adding fields or methods to a model defined in another module. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate patch to extend an existing model via _inherit.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -553,11 +344,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_view_inherit_patch",
-        description=(
-            "Generate a patch to INHERIT and modify an existing view using XPath. "
-            "Use this when you need to add fields to or modify another module's form/list/search view. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate XPath patch to inherit and modify an existing view.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -571,33 +358,16 @@ TOOL_DEFINITIONS = [
                     "enum": ["inside", "before", "after", "replace", "attributes"],
                     "default": "inside",
                 },
-                "xml_snippet": {
-                    "type": "string",
-                    "description": "XML snippet inserted inside the xpath node.",
-                },
-                "target_xml_path": {
-                    "type": "string",
-                    "description": "Optional target file path relative to module root.",
-                },
+                "xml_snippet": {"type": "string"},
+                "target_xml_path": {"type": "string"},
             },
-            "required": [
-                "module",
-                "model",
-                "inherit_view_ref",
-                "new_view_id",
-                "xml_snippet",
-            ],
+            "required": ["module", "model", "inherit_view_ref", "new_view_id", "xml_snippet"],
         },
         annotations=READ_ONLY,
     ),
     Tool(
         name="scaffold_views_patch",
-        description=(
-            "Generate a complete set of views (form, list, search, kanban, graph, pivot) "
-            "for a model with optional action and menu item. "
-            "Use this when creating a new model that needs a full UI. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate complete view set (form/list/search/kanban) for a model.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -622,10 +392,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_action_patch",
-        description=(
-            "Generate an ir.actions.act_window XML record for a model. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate ir.actions.act_window XML record patch.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -644,10 +411,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_menu_patch",
-        description=(
-            "Generate a menu item XML record with optional parent and action binding. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate menu item XML record patch.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -665,19 +429,13 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_security_access_patch",
-        description=(
-            "Generate ir.model.access.csv entries (CRUD permissions) for a model. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate ir.model.access.csv CRUD permission entries.",
         inputSchema={
             "type": "object",
             "properties": {
                 "module": {"type": "string"},
                 "model": {"type": "string"},
-                "access_rows_csv": {
-                    "type": "string",
-                    "description": "Optional CSV rows without header; default full-access user row.",
-                },
+                "access_rows_csv": {"type": "string"},
                 "target_csv_path": {"type": "string", "default": "security/ir.model.access.csv"},
             },
             "required": ["module", "model"],
@@ -686,10 +444,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_record_rule_patch",
-        description=(
-            "Generate an ir.rule XML record for domain-based record-level security. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate ir.rule XML record for domain-based security.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -707,11 +462,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_wizard_patch",
-        description=(
-            "Generate a TransientModel (wizard) with form view and optional action/menu. "
-            "Use this for creating popup wizards. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate TransientModel wizard with form view patch.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -727,10 +478,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="scaffold_report_patch",
-        description=(
-            "Generate a report: Python model, QWeb template, and report action. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Generate report model, QWeb template, and action patch.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -747,11 +495,7 @@ TOOL_DEFINITIONS = [
     # ── Module Maintenance ──────────────────────────────────────────────
     Tool(
         name="manifest_update_patch",
-        description=(
-            "Generate a patch to add data file entries (e.g. 'views/sale_view.xml') "
-            "to a module's __manifest__.py 'data' list. Idempotent — skips files already listed. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Patch __manifest__.py to add data file entries.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -764,11 +508,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="init_update_patch",
-        description=(
-            "Generate a patch to add Python import statements to a module's __init__.py. "
-            "Idempotent — skips imports already present. "
-            "Output is a unified diff patch — no files are modified."
-        ),
+        description="Patch __init__.py to add Python import statements.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -782,12 +522,7 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="run_module_upgrade",
-        description=(
-            "Run odoo-bin to install or upgrade an Odoo module (with --stop-after-init). "
-            "Use this after making changes to test that the module installs/upgrades cleanly. "
-            "Returns the tail of stdout/stderr and a success/failure status. "
-            "Requires odoo-bin to be accessible on the server."
-        ),
+        description="Run odoo-bin to install or upgrade a module.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -796,20 +531,10 @@ TOOL_DEFINITIONS = [
                     "type": "string",
                     "enum": ["install", "update"],
                     "default": "update",
-                    "description": "Use 'install' for new modules, 'update' for existing ones.",
                 },
-                "database": {
-                    "type": "string",
-                    "description": "Odoo database name. If omitted, relies on config file default.",
-                },
-                "odoo_bin": {
-                    "type": "string",
-                    "description": "Path to the odoo-bin executable (e.g. /opt/odoo/server/odoo-bin).",
-                },
-                "config_file": {
-                    "type": "string",
-                    "description": "Path to Odoo config file (e.g. /etc/odoo/odoo.conf).",
-                },
+                "database": {"type": "string"},
+                "odoo_bin": {"type": "string"},
+                "config_file": {"type": "string"},
             },
             "required": ["module"],
         },

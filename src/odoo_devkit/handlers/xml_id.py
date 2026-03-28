@@ -4,7 +4,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json, run_rg
+from ..utils import to_toon, run_rg
 
 
 def handle(
@@ -30,7 +30,7 @@ def handle(
                     all_matches.append(m)
         return [
             TextContent(
-                type="text", text=compact_json({"xml_id": xml_id, "matches": all_matches[:limit]})
+                type="text", text=to_toon({"xml_id": xml_id, "matches": all_matches[:limit]})
             )
         ]
 

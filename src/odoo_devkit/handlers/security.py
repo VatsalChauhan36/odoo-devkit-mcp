@@ -3,7 +3,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import compact_json
+from ..utils import to_toon
 from .helpers import _collect_access_csv_records, _collect_record_rules, _snake_from_model
 
 
@@ -36,7 +36,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json(
+                text=to_toon(
                     {
                         "model": target,
                         "access_count": len(access_matches[:limit]),

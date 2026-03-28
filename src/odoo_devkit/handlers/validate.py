@@ -5,7 +5,7 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import assert_allowed_path, compact_json
+from ..utils import assert_allowed_path, to_toon
 
 
 def handle(
@@ -29,7 +29,7 @@ def handle(
         abs_xml = assert_allowed_path(module_path / rel, roots)
 
         if not abs_xml.exists():
-            return [TextContent(type="text", text=compact_json({"error": f"File not found: {abs_xml}"}))]
+            return [TextContent(type="text", text=to_toon({"error": f"File not found: {abs_xml}"}))]
 
         errors: list[str] = []
         warnings: list[str] = []
@@ -38,7 +38,7 @@ def handle(
         try:
             tree = ET.parse(abs_xml)
         except ET.ParseError as exc:
-            return [TextContent(type="text", text=compact_json({"valid": False, "errors": [f"XML parse error: {exc}"], "warnings": []}))]
+            return [TextContent(type="text", text=to_toon({"valid": False, "errors": [f"XML parse error: {exc}"], "warnings": []}))]
 
         root_el = tree.getroot()
 
@@ -109,7 +109,7 @@ def handle(
         return [
             TextContent(
                 type="text",
-                text=compact_json({
+                text=to_toon({
                     "valid": len(errors) == 0,
                     "file": str(abs_xml),
                     "error_count": len(errors),

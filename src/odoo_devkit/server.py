@@ -8,7 +8,7 @@ from mcp.types import TextContent, Tool
 
 from .tool_definitions import TOOL_DEFINITIONS
 from .tool_handlers import dispatch_tool
-from .utils import compact_json, load_roots
+from .utils import load_roots, to_toon
 
 
 async def serve(roots: list[Path]) -> None:
@@ -24,7 +24,7 @@ async def serve(roots: list[Path]) -> None:
         try:
             return dispatch_tool(name=name, arguments=arguments or {}, roots=roots)
         except Exception as exc:
-            return [TextContent(type="text", text=compact_json({"error": str(exc)}))]
+            return [TextContent(type="text", text=to_toon({"error": str(exc)}))]
 
     options = server.create_initialization_options()
     async with stdio_server() as (read_stream, write_stream):
