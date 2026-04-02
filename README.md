@@ -4,10 +4,12 @@ A token-efficient [Model Context Protocol (MCP)](https://modelcontextprotocol.io
 
 ## Features
 
-- **Module & model discovery** — find models, fields, views, actions, menus, security rules
-- **View navigation** — trace inheritance chains, find all views for a model
-- **Code scaffolding** — generate ready-to-apply unified diff patches for models, views, wizards, reports, menus, security
-- **XML validation** — validate view XML syntax and field names against model definitions
+- **Module & model discovery** — find models, fields, methods, views, actions, menus, and security rules
+- **Custom-first ranking** — discovery tools prefer matches from your custom addons root before standard Odoo code
+- **View navigation with inheritance awareness** — trace inheritance chains and resolve inherited view models more accurately
+- **Token-efficient search flows** — bounded file reads, compact response keys, module-scoped search, and optional inline context
+- **Code scaffolding** — generate ready-to-apply unified diff patches for models, views, wizards, reports, menus, and security
+- **XML validation** — validate view XML syntax and field names against model definitions, including inherited views
 - **Read-only by default** — safe to use in automated workflows; no writes to your codebase
 
 ---
@@ -190,6 +192,8 @@ Once your MCP client is running, you can ask your AI assistant:
 - *"List all custom Odoo modules"* → calls `list_custom_modules`
 - *"Find the definition of sale.order model"* → calls `find_model_definition`
 - *"Show me all views for product.template"* → calls `find_view_by_model`
+- *"Inspect the full development surface for stock.picking"* → calls `inspect_model_surface`
+- *"Where should I override the confirm button in sale.order form?"* → calls `locate_view_override`
 
 ---
 
@@ -202,9 +206,18 @@ Once your MCP client is running, you can ask your AI assistant:
 | `list_modules` | List all modules across all configured roots |
 | `list_custom_modules` | List modules from your custom addons root only |
 | `get_module_manifest` | Parse `__manifest__.py` fields for a module |
+| `get_module_structure` | Return a module file tree for one or more modules |
+| `glob_odoo_files` | Find files by glob pattern across addons roots |
 | `read_file_lines` | Read a bounded line range from any allowed file |
 | `search_odoo_code` | Token-bounded ripgrep search across all roots |
 | `search_odoo_docs` | Search local Odoo documentation (requires `ODOO_MCP_DOCS_PATH`) |
+
+### Workflow Tools
+
+| Tool | Description |
+|------|-------------|
+| `inspect_model_surface` | One-call model summary: definitions, fields, methods, views, actions, menus, security, related files |
+| `locate_view_override` | Find the best XML views and files to inspect or override for a field, button, xml_id, or text target |
 
 ### Model & Field Analysis
 
@@ -212,6 +225,7 @@ Once your MCP client is running, you can ask your AI assistant:
 |------|-------------|
 | `find_model_definition` | Find files defining a model by `_name` or `_inherit` |
 | `get_model_fields` | List all field declarations for a model |
+| `find_method_definition` | Find Python method definitions, optionally with inline body context |
 | `find_xml_id_definition` | Find XML records by external ID |
 | `find_security_access_for_model` | Find `ir.model.access` and `ir.rule` records for a model |
 
@@ -255,6 +269,78 @@ Once your MCP client is running, you can ask your AI assistant:
 | `manifest_update_patch` | Add data file entries to `__manifest__.py` |
 | `init_update_patch` | Add import statements to `__init__.py` |
 | `run_module_upgrade` | Run `odoo-bin -u <module> --stop-after-init` (requires `odoo_bin` path) |
+
+---
+
+## Recommended Low-Token Workflows
+
+These tool combinations are the fastest path to good answers without flooding the model context.
+
+### 1. Start narrow, then read
+
+Use:
+
+- `list_custom_modules`
+- `get_module_structure`
+- `glob_odoo_files`
+- `read_file_lines`
+
+Example flow:
+
+1. List the custom module.
+2. Inspect only that module's tree.
+3. Glob for likely targets such as `models/*.py` or `views/*.xml`.
+4. Read only the exact line ranges you need.
+
+This avoids loading full files or scanning all addons roots too early.
+
+### 2. Prefer scoped search over global grep
+
+Use `search_odoo_code` with:
+
+- `module_filter` when you already know the module
+- a specific `glob` such as `models/*.py`, `views/*.xml`, or `security/*`
+- `context_lines` only when inline context will save a follow-up file read
+
+This keeps both ripgrep output and assistant context much smaller.
+
+### 3. Use method search instead of broad code search
+
+If you know the Python method name, prefer `find_method_definition` over `search_odoo_code`.
+
+It can:
+
+- filter by model
+- return only method definitions
+- include the method body inline with `context_lines`
+
+That is usually the best token-to-signal ratio for Python debugging.
+
+### 4. Let view tools do the inheritance work
+
+When exploring XML, prefer:
+
+- `find_view_definition`
+- `find_inherited_views`
+- `find_view_by_model`
+- `find_view_chain`
+- `find_field_in_views`
+- `validate_view_xml`
+
+These tools now handle inherited view/model resolution better than a plain XML text search.
+
+### 5. Lean on custom-first ranking
+
+Most discovery tools return custom-module matches before standard Odoo ones. In mixed codebases, this usually surfaces the right answer sooner and reduces wasted follow-up calls.
+
+### 6. Use workflow tools for common Odoo tasks
+
+Prefer these when you want an answer, not just raw building blocks:
+
+- `inspect_model_surface` for "show me everything important about this model"
+- `locate_view_override` for "where should I edit or inherit this field/button/view target"
+
+They compose the lower-level tools for you and usually save several MCP round trips.
 
 ---
 
