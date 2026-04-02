@@ -4,9 +4,10 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import to_toon, run_rg
+from ..utils import run_rg, to_toon
 from .helpers import (
     _enrich_model_matches,
+    _find_model_python_files,
     _find_module_for_file,
     _list_related_module_files,
     _scope_for_module,
@@ -20,9 +21,9 @@ def handle(
         model = arguments.get("model")
         if not model:
             raise ValueError("model is required")
-        limit = int(arguments.get("limit", 20))
+        limit = int(str(arguments.get("limit", 20)))
         include_related_files = bool(arguments.get("include_related_files", True))
-        related_files_limit = int(arguments.get("related_files_limit", 60))
+        related_files_limit = int(str(arguments.get("related_files_limit", 60)))
 
         name_pattern = r"_name\s*=\s*['\"]" + re.escape(model) + r"['\"]"
         inherit_pattern = (
@@ -33,8 +34,10 @@ def handle(
             + r"['\"])"
         )
 
-        direct = run_rg(name_pattern, roots, ["*.py"], limit=limit)
-        inherited = run_rg(inherit_pattern, roots, ["*.py"], limit=limit)
+        direct = run_rg(name_pattern, roots, ["*.py"], limit=limit, fixed_strings=False)
+        inherited = run_rg(
+            inherit_pattern, roots, ["*.py"], limit=limit, fixed_strings=False
+        )
 
         direct_enriched = _enrich_model_matches(direct, "direct", roots)
         inherited_enriched = _enrich_model_matches(inherited, "inherit", roots)
@@ -43,15 +46,24 @@ def handle(
         for row in direct_enriched + inherited_enriched:
             key = (row["path"], row["line"], row["kind"])
             dedup[key] = row
-        all_matches = list(dedup.values())[: (limit * 2)]
+        all_matches = sorted(
+            dedup.values(),
+            key=lambda row: (
+                0 if row.get("scope") == "custom" else 1,
+                0 if row.get("kind") == "direct" else 1,
+                row.get("module") or "",
+                row["path"],
+                row["line"],
+            ),
+        )[: (limit * 2)]
 
         related_files: list[str] = []
         if include_related_files:
             module_paths = set()
             for row in all_matches:
-                module = _find_module_for_file(Path(row["path"]))
-                if module:
-                    module_paths.add(module)
+                module_path = _find_module_for_file(Path(row["path"]))
+                if module_path:
+                    module_paths.add(module_path)
             for module_path in sorted(module_paths):
                 related_files.extend(
                     _list_related_module_files(module_path, related_files_limit)
@@ -64,7 +76,11 @@ def handle(
             TextContent(
                 type="text",
                 text=to_toon(
-                    {"model": model, "matches": all_matches, "related_files": related_files}
+                    {
+                        "model": model,
+                        "matches": all_matches,
+                        "related_files": related_files,
+                    }
                 ),
             )
         ]
@@ -73,69 +89,57 @@ def handle(
         model = arguments.get("model")
         if not model:
             raise ValueError("model is required")
-        limit = int(arguments.get("limit", 200))
+        limit = int(str(arguments.get("limit", 200)))
 
-        # Search for field declarations in Python files across all roots
-        field_pattern = r"^\s+\w+\s*=\s*fields\."
-        raw_matches = run_rg(field_pattern, roots, ["*.py"], limit=limit * 5, fixed_strings=False)
+        field_re = re.compile(r"^\s*(\w+)\s*=\s*(fields\.\w+)\(")
+        model_files = _find_model_python_files(model, roots)
 
-        # Filter to only files that define or inherit the model
-        name_pat = re.compile(r"_name\s*=\s*['\"]" + re.escape(model) + r"['\"]")
-        inherit_pat = re.compile(
-            r"_inherit\s*=\s*(?:\[[^\]]*['\"]" + re.escape(model) + r"['\"][^\]]*\]|['\"]" + re.escape(model) + r"['\"])"
-        )
-
-        # Collect files that define/inherit the model
-        model_files: set[str] = set()
-        for root_path in roots:
-            for py_file in root_path.rglob("*.py"):
-                try:
-                    content = py_file.read_text(encoding="utf-8", errors="replace")
-                    if name_pat.search(content) or inherit_pat.search(content):
-                        model_files.add(str(py_file))
-                except OSError:
-                    continue
-
-        # Only keep field matches from model files
-        # Note: run_rg strips leading whitespace from text, so don't anchor with ^\s+
-        field_re = re.compile(r"^(\w+)\s*=\s*(fields\.\w+)\(")
-        results: list[dict[str, Any]] = []
         seen_fields: dict[str, dict[str, Any]] = {}
-        for row in raw_matches:
-            if row["path"] not in model_files:
+        for py_file in model_files:
+            try:
+                lines = py_file.read_text(
+                    encoding="utf-8", errors="replace"
+                ).splitlines()
+            except OSError:
                 continue
-            m = field_re.match(row["text"])
-            if not m:
-                continue
-            field_name = m.group(1)
-            field_type = m.group(2)
-            if field_name.startswith("_"):
-                continue
-            file_path = Path(row["path"])
-            mod = _find_module_for_file(file_path)
-            entry = {
-                "field": field_name,
-                "type": field_type,
-                "line": row["line"],
-                "path": row["path"],
-                "module": mod.name if mod else None,
-                "scope": _scope_for_module(mod, roots) if mod else "unknown",
-            }
-            # Prefer custom scope over standard for duplicates
-            existing = seen_fields.get(field_name)
-            if not existing or (existing["scope"] != "custom" and entry["scope"] == "custom"):
-                seen_fields[field_name] = entry
+            module_path = _find_module_for_file(py_file)
+            module_name = module_path.name if module_path else None
+            scope = _scope_for_module(module_path, roots) if module_path else "unknown"
 
-        results = sorted(seen_fields.values(), key=lambda x: x["field"])[:limit]
+            for line_no, line in enumerate(lines, start=1):
+                match = field_re.match(line)
+                if not match:
+                    continue
+                field_name = match.group(1)
+                field_type = match.group(2)
+                if field_name.startswith("_"):
+                    continue
+                entry = {
+                    "field": field_name,
+                    "type": field_type,
+                    "line": line_no,
+                    "path": str(py_file),
+                    "module": module_name,
+                    "scope": scope,
+                }
+                existing = seen_fields.get(field_name)
+                if not existing or (
+                    existing.get("scope") != "custom" and entry["scope"] == "custom"
+                ):
+                    seen_fields[field_name] = entry
+
+        results = sorted(seen_fields.values(), key=lambda row: row["field"])[:limit]
         return [
             TextContent(
                 type="text",
-                text=to_toon({
-                    "model": model,
-                    "field_count": len(results),
-                    "source_files": sorted(model_files),
-                    "fields": results,
-                }),
+                text=to_toon(
+                    {
+                        "model": model,
+                        "field_count": len(results),
+                        "source_files": [str(path) for path in model_files],
+                        "fields": results,
+                    }
+                ),
             )
         ]
 

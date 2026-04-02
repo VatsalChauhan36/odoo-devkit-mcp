@@ -8,6 +8,7 @@ from .helpers import (
     _collect_action_records,
     _collect_menu_records,
     _collect_view_records,
+    _sort_records,
 )
 
 
@@ -18,18 +19,20 @@ def handle(
         model = arguments.get("model")
         if not model:
             raise ValueError("model is required")
-        limit = int(arguments.get("limit", 80))
+        limit = int(str(arguments.get("limit", 80)))
         target = model.strip()
         actions = _collect_action_records(roots)
-        matches = [a for a in actions if (a.get("res_model") or "").strip() == target]
+        matches = _sort_records(
+            [action for action in actions if (action.get("res_model") or "").strip() == target]
+        )[:limit]
         return [
             TextContent(
                 type="text",
                 text=to_toon(
                     {
                         "model": target,
-                        "count": len(matches[:limit]),
-                        "matches": matches[:limit],
+                        "count": len(matches),
+                        "matches": matches,
                     }
                 ),
             )
@@ -39,7 +42,7 @@ def handle(
         ref = arguments.get("ref")
         if not ref:
             raise ValueError("ref is required")
-        limit = int(arguments.get("limit", 120))
+        limit = int(str(arguments.get("limit", 120)))
         target = ref.strip()
         actions = _collect_action_records(roots)
         menus = _collect_menu_records(roots)
@@ -59,7 +62,6 @@ def handle(
                 if action.get("xml_id_raw") and action.get("module"):
                     target_action_ids.add(f"{action['module']}.{action['xml_id_raw']}")
 
-        # Also resolve through matching view -> action.view_id
         for view in views:
             if target in {view.get("xml_id"), view.get("xml_id_raw"), view.get("name")}:
                 view_ids = {view.get("xml_id"), view.get("xml_id_raw")}
@@ -67,13 +69,15 @@ def handle(
                     if action.get("view_id") in view_ids and action.get("xml_id"):
                         target_action_ids.add(action["xml_id"])
 
-        menu_map = {m.get("xml_id"): m for m in menus if m.get("xml_id")}
-        # Match menus by action OR directly by xml_id/name (covers root menus with no action)
-        matched_menus = [
-            m for m in menus
-            if m.get("action") in target_action_ids
-            or target in {m.get("xml_id"), m.get("xml_id_raw"), m.get("name")}
-        ]
+        menu_map = {menu.get("xml_id"): menu for menu in menus if menu.get("xml_id")}
+        matched_menus = _sort_records(
+            [
+                menu
+                for menu in menus
+                if menu.get("action") in target_action_ids
+                or target in {menu.get("xml_id"), menu.get("xml_id_raw"), menu.get("name")}
+            ]
+        )
 
         def build_ancestors(menu: dict[str, Any]) -> list[dict[str, Any]]:
             chain: list[dict[str, Any]] = []
@@ -90,13 +94,14 @@ def handle(
 
         result = []
         for menu in matched_menus[:limit]:
+            children = _sort_records(
+                [child for child in menus if child.get("parent") == menu.get("xml_id")]
+            )[:20]
             result.append(
                 {
                     "menu": menu,
                     "ancestors": build_ancestors(menu),
-                    "children": [
-                        m for m in menus if m.get("parent") == menu.get("xml_id")
-                    ][:20],
+                    "children": children,
                 }
             )
         return [

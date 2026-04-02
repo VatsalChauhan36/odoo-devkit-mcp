@@ -4,7 +4,7 @@ from typing import Any, Sequence
 from mcp.types import TextContent
 
 from ..utils import to_toon
-from .helpers import _collect_access_csv_records, _collect_record_rules, _snake_from_model
+from .helpers import _collect_access_csv_records, _collect_record_rules, _sort_records
 
 
 def handle(
@@ -14,24 +14,29 @@ def handle(
         model = arguments.get("model")
         if not model:
             raise ValueError("model is required")
-        limit = int(arguments.get("limit", 120))
+        limit = int(str(arguments.get("limit", 120)))
         target = model.strip()
 
         csv_rows = _collect_access_csv_records(roots)
         model_token = f"model_{target.replace('.', '_')}"
-        access_matches = [
-            row for row in csv_rows
-            if (row.get("model_id:id") or "") == model_token
-            or (row.get("model_id:id") or "").endswith(f".{model_token}")
-        ]
+        access_matches = _sort_records(
+            [
+                row
+                for row in csv_rows
+                if (row.get("model_id:id") or "") == model_token
+                or (row.get("model_id:id") or "").endswith(f".{model_token}")
+            ]
+        )[:limit]
 
         rules = _collect_record_rules(roots)
-        rule_matches = [
-            row
-            for row in rules
-            if (row.get("model_ref") or "") == model_token
-            or (row.get("model_ref") or "").endswith(f".{model_token}")
-        ]
+        rule_matches = _sort_records(
+            [
+                row
+                for row in rules
+                if (row.get("model_ref") or "") == model_token
+                or (row.get("model_ref") or "").endswith(f".{model_token}")
+            ]
+        )[:limit]
 
         return [
             TextContent(
@@ -39,10 +44,10 @@ def handle(
                 text=to_toon(
                     {
                         "model": target,
-                        "access_count": len(access_matches[:limit]),
-                        "rule_count": len(rule_matches[:limit]),
-                        "access": access_matches[:limit],
-                        "rules": rule_matches[:limit],
+                        "access_count": len(access_matches),
+                        "rule_count": len(rule_matches),
+                        "access": access_matches,
+                        "rules": rule_matches,
                     }
                 ),
             )

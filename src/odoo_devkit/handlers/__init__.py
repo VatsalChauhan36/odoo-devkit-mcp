@@ -9,12 +9,14 @@ from . import (
     model,
     modules,
     recursive,
+    rpc,
     scaffold,
     search,
     security,
     upgrade,
     validate,
     views,
+    workflows,
     xml_id,
 )
 
@@ -29,7 +31,9 @@ _HANDLERS = [
     search,
     recursive,
     validate,
+    workflows,
     upgrade,
+    rpc,
 ]
 
 

@@ -413,7 +413,7 @@ def handle(
             raise ValueError(f"Unknown module: {module}")
         action_ref = arguments.get("action_ref")
         parent_menu_ref = arguments.get("parent_menu_ref")
-        sequence = int(arguments.get("sequence", 10))
+        sequence = int(str(arguments.get("sequence", 10)))
         rel = (arguments.get("target_xml_path") or f"views/{menu_id}_menu.xml").strip().lstrip("/")
         abs_path = (modules[module] / rel).resolve()
         line = f"        <menuitem id=\"{menu_id}\" name=\"{menu_name}\" sequence=\"{sequence}\""

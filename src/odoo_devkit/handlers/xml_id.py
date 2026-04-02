@@ -4,7 +4,8 @@ from typing import Any, Sequence
 
 from mcp.types import TextContent
 
-from ..utils import to_toon, run_rg
+from ..utils import run_rg, to_toon
+from .helpers import _find_module_for_file, _scope_for_module, _sort_records
 
 
 def handle(
@@ -14,24 +15,24 @@ def handle(
         xml_id = arguments.get("xml_id")
         if not xml_id:
             raise ValueError("xml_id is required")
-        limit = int(arguments.get("limit", 20))
-        # Search for both full xml_id (e.g. "sale.view_order_form") and raw id (e.g. "view_order_form")
-        # XML files store the raw id without module prefix, so we must strip it.
+        limit = int(str(arguments.get("limit", 20)))
         raw_id = xml_id.split(".", 1)[1] if "." in xml_id else xml_id
         search_ids = list({xml_id, raw_id})
-        all_matches: list[dict] = []
-        seen_keys: set[tuple] = set()
-        for sid in search_ids:
-            pattern = r"id\s*=\s*['\"]" + re.escape(sid) + r"['\"]"
-            for m in run_rg(pattern, roots, ["*.xml"], limit=limit, fixed_strings=False):
-                key = (m["path"], m["line"])
-                if key not in seen_keys:
-                    seen_keys.add(key)
-                    all_matches.append(m)
-        return [
-            TextContent(
-                type="text", text=to_toon({"xml_id": xml_id, "matches": all_matches[:limit]})
-            )
-        ]
+        all_matches: list[dict[str, Any]] = []
+        seen_keys: set[tuple[str, int]] = set()
+        for search_id in search_ids:
+            pattern = r"id\s*=\s*['\"]" + re.escape(search_id) + r"['\"]"
+            for match in run_rg(pattern, roots, ["*.xml"], limit=limit, fixed_strings=False):
+                key = (match["path"], match["line"])
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                file_path = Path(match["path"])
+                module_path = _find_module_for_file(file_path)
+                module_name = module_path.name if module_path else None
+                scope = _scope_for_module(module_path, roots) if module_path else "unknown"
+                all_matches.append({**match, "module": module_name, "scope": scope})
+        matches = _sort_records(all_matches)[:limit]
+        return [TextContent(type="text", text=to_toon({"xml_id": xml_id, "matches": matches}))]
 
     return None

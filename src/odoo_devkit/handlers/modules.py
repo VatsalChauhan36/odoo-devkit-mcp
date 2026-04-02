@@ -12,7 +12,7 @@ def handle(
 ) -> Sequence[TextContent] | None:
     if name in ("list_modules", "list_custom_modules"):
         query = arguments.get("query", "").strip().lower()
-        limit = int(arguments.get("limit", 50))
+        limit = int(str(arguments.get("limit", 50)))
         module_items = modules.items()
         if name == "list_custom_modules":
             # Convention: first configured root is the custom addons root.

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>odoo-devkit</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<div id="frame">
+
+    <!-- ── Header ───────────────────────────────────────────────── -->
+    <header class="header">
+        <div class="header-left">
+            <span class="logo-icon">⚙</span>
+            <span class="logo-text">odoo-devkit</span>
+        </div>
+        <nav class="header-tabs">
+            <a href="#" class="tab active" data-tab="config">Configuration</a>
+            <!-- future tabs go here -->
+        </nav>
+        <div class="header-right">
+            <button id="theme-toggle" class="btn-theme" title="Toggle dark/light mode">🌙</button>
+        </div>
+    </header>
+
+    <!-- ── Toast ────────────────────────────────────────────────── -->
+    <div id="toast" class="toast" style="display:none"></div>
+
+    <!-- ── Main ─────────────────────────────────────────────────── -->
+    <div class="main">
+
+        <!-- ════ Configuration Tab ════════════════════════════════ -->
+        <div id="tab-config" class="tab-content active">
+
+            <!-- ⓪ Run Command Parser -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Import from Run Command</h2>
+                    <span class="card-hint">Paste your <code>odoo-bin</code> command to auto-fill settings below</span>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                    <label for="run-command">Run command</label>
+                    <textarea id="run-command" class="text-input mono run-cmd-area"
+                        placeholder="python3 /odoo/odoo-bin -c /etc/odoo/odoo.conf -d mydb --addons-path=/odoo/addons,/enterprise"></textarea>
+                </div>
+                <div id="run-cmd-preview" class="run-cmd-preview" style="display:none"></div>
+                <div class="actions-bar" style="margin-top:12px">
+                    <button class="btn btn-primary" id="parse-cmd-btn">Extract & Fill</button>
+                    <button class="btn btn-secondary" id="clear-cmd-btn">Clear</button>
+                </div>
+            </section>
+
+            <!-- ① Odoo Settings (on top) -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Odoo Settings</h2>
+                    <span class="card-hint">Defaults for the <code>run_module_upgrade</code> tool</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="odoo-config">odoo.conf path</label>
+                    <div class="field-row">
+                        <input type="text" id="odoo-config" class="text-input mono" placeholder="/etc/odoo/odoo.conf">
+                        <span class="path-status" id="odoo-config-status"></span>
+                        <button class="btn btn-secondary btn-browse" id="browse-odoo-config-btn">Browse</button>
+                        <button class="btn btn-secondary btn-detect" id="detect-odoo-config-btn">Detect</button>
+                    </div>
+                    <!-- detected configs dropdown -->
+                    <div id="odoo-config-detected" class="detected-list" style="display:none"></div>
+                    <!-- import addons_path banner (shown after a config is selected) -->
+                    <div id="import-addons-banner" class="import-banner" style="display:none">
+                        <span id="import-addons-info"></span>
+                        <button class="btn btn-primary btn-sm" id="import-addons-btn">Import addons_path</button>
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label for="python-path">Python path</label>
+                    <div class="field-row">
+                        <input type="text" id="python-path" class="text-input mono" placeholder="/usr/bin/python3">
+                        <span class="path-status" id="python-path-status"></span>
+                        <button class="btn btn-secondary btn-browse" id="browse-python-btn">Browse</button>
+                        <button class="btn btn-secondary btn-detect" id="detect-python-btn">Detect</button>
+                    </div>
+                    <div id="python-detected" class="detected-list" style="display:none"></div>
+                </div>
+
+                <div class="field-group">
+                    <label for="odoo-bin">odoo-bin path</label>
+                    <div class="field-row">
+                        <input type="text" id="odoo-bin" class="text-input mono" placeholder="/odoo/odoo-bin">
+                        <span class="path-status" id="odoo-bin-status"></span>
+                        <button class="btn btn-secondary btn-browse" id="browse-odoo-bin-btn">Browse</button>
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label for="database">Default database</label>
+                    <input type="text" id="database" class="text-input" placeholder="mydb">
+                </div>
+
+                <div class="field-group">
+                    <label for="odoo-url">Odoo URL <span class="label-hint">(for XML-RPC)</span></label>
+                    <div class="field-row">
+                        <input type="text" id="odoo-url" class="text-input mono" placeholder="http://localhost:8069">
+                        <button class="btn btn-secondary btn-detect" id="check-rpc-btn">Test</button>
+                    </div>
+                    <div id="rpc-status" class="rpc-status" style="display:none"></div>
+                </div>
+
+                <div class="field-row rpc-credentials">
+                    <div class="field-group" style="flex:1;margin-bottom:0">
+                        <label for="odoo-username">Username</label>
+                        <input type="text" id="odoo-username" class="text-input" placeholder="admin">
+                    </div>
+                    <div class="field-group" style="flex:1;margin-bottom:0">
+                        <label for="odoo-password">Password</label>
+                        <input type="password" id="odoo-password" class="text-input" placeholder="••••••••">
+                    </div>
+                </div>
+            </section>
+
+            <!-- ② Addons Roots -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Addons Roots</h2>
+                    <span class="card-hint">Searched by all tools &mdash; add custom, server, and enterprise dirs</span>
+                </div>
+                <p class="priority-note">
+                    Priority: <code>--roots</code> CLI &gt; <code>ODOO_MCP_ROOTS</code> env var &gt; paths below
+                </p>
+                <div id="roots-list" class="roots-list"></div>
+                <div class="input-row">
+                    <input type="text" id="new-root-input" class="text-input mono" placeholder="/path/to/addons">
+                    <button class="btn btn-secondary" id="browse-root-btn">Browse</button>
+                    <button class="btn btn-secondary" id="add-root-btn">+ Add</button>
+                </div>
+            </section>
+
+            <!-- ③ Docs Path -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Docs Path</h2>
+                    <span class="card-hint">Enables <code>search_odoo_docs</code> &mdash; leave empty if not available</span>
+                </div>
+                <p class="priority-note">Override with <code>ODOO_MCP_DOCS_PATH</code> env var</p>
+                <div class="field-group">
+                    <label for="docs-path">Documentation directory</label>
+                    <div class="field-row">
+                        <input type="text" id="docs-path" class="text-input mono" placeholder="/odoo/documentation">
+                        <span class="path-status" id="docs-path-status"></span>
+                        <button class="btn btn-secondary btn-browse" id="browse-docs-btn">Browse</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ④ Dashboard Settings -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Dashboard Settings</h2>
+                    <span class="card-hint">Controls dashboard behaviour on MCP server startup</span>
+                </div>
+                <div class="field-group toggle-group">
+                    <label class="toggle-label" for="open-browser">
+                        Auto-open dashboard in browser on every MCP server start
+                    </label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="open-browser" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Actions -->
+            <div class="actions-bar">
+                <button class="btn btn-primary" id="save-btn">Save Configuration</button>
+                <button class="btn btn-secondary" id="discard-btn">Discard Changes</button>
+                <span class="save-path" id="save-path"></span>
+            </div>
+
+        </div><!-- #tab-config -->
+
+    </div><!-- .main -->
+</div><!-- #frame -->
+
+<script src="dashboard.js"></script>
+</body>
+</html>

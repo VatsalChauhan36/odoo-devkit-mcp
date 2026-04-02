@@ -17,19 +17,19 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "limit": {"type": "integer", "default": 50},
+                "limit": {"type": ["integer", "string"], "default": 50},
             },
         },
         annotations=READ_ONLY,
     ),
     Tool(
         name="list_custom_modules",
-        description="List only custom modules from primary addons root.",
+        description="List modules from your primary custom addons root only.",
         inputSchema={
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "limit": {"type": "integer", "default": 50},
+                "limit": {"type": ["integer", "string"], "default": 50},
             },
         },
         annotations=READ_ONLY,
@@ -46,27 +46,51 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="get_module_structure",
-        description="Get full file tree for a module by directory.",
+        description=(
+            "Get full file tree for one or more modules. "
+            "`module` accepts a single name, a comma-separated list, or an array. "
+            "`module_name` is accepted as an alias for `module`."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
-                "module": {"type": "string"},
-                "limit": {"type": "integer", "default": 300},
+                "module": {
+                    "oneOf": [
+                        {"type": "string", "description": "Single module name or comma-separated list."},
+                        {"type": "array", "items": {"type": "string"}, "description": "List of module names."},
+                    ],
+                    "description": "Module name(s). Also accepted as `module_name`.",
+                },
+                "module_name": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "array", "items": {"type": "string"}},
+                    ],
+                    "description": "Alias for `module`.",
+                },
+                "limit": {"type": ["integer", "string"], "default": 300, "description": "Max files per module."},
             },
-            "required": ["module"],
         },
         annotations=READ_ONLY,
     ),
     Tool(
         name="read_file_lines",
-        description="Read lines from a file inside addons roots.",
+        description=(
+            "Read a bounded line range from a file inside addons roots. "
+            "Use `start` and `end` (1-based, inclusive) to specify the range. "
+            "`start_line` and `end_line` are accepted as aliases for `start` and `end`. "
+            "`max_lines` caps the window to prevent huge reads (default 300). "
+            "Example: start=874, end=940 reads lines 874-940."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
                 "path": {"type": "string"},
-                "start": {"type": "integer", "default": 1},
-                "end": {"type": "integer", "default": 120},
-                "max_lines": {"type": "integer", "default": 120},
+                "start": {"type": ["integer", "string"], "default": 1, "description": "First line to read (1-based, inclusive). Alias: start_line."},
+                "end": {"type": ["integer", "string"], "default": 300, "description": "Last line to read (1-based, inclusive). Alias: end_line."},
+                "start_line": {"type": ["integer", "string"], "description": "Alias for start."},
+                "end_line": {"type": ["integer", "string"], "description": "Alias for end."},
+                "max_lines": {"type": ["integer", "string"], "default": 300, "description": "Maximum number of lines to return regardless of start/end range."},
             },
             "required": ["path"],
         },
@@ -76,15 +100,24 @@ TOOL_DEFINITIONS = [
     # ── Search ──────────────────────────────────────────────────────────
     Tool(
         name="search_odoo_code",
-        description="Regex/text search across Odoo codebase via ripgrep.",
+        description=(
+            "Regex/text search across Odoo codebase via ripgrep. "
+            "Use `context_lines` (e.g. 5-10) to include surrounding lines with each match "
+            "so you can read method bodies without a follow-up read_file_lines call."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
                 "glob": {"type": "string", "default": "*.py"},
-                "limit": {"type": "integer", "default": 30},
+                "limit": {"type": ["integer", "string"], "default": 30},
                 "fixed_strings": {"type": "boolean", "default": True},
                 "module_filter": {"type": "string"},
+                "context_lines": {
+                    "type": ["integer", "string"],
+                    "default": 0,
+                    "description": "Number of lines before and after each match to include (like grep -C). Use 5-10 to read method bodies inline.",
+                },
             },
             "required": ["query"],
         },
@@ -97,7 +130,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "limit": {"type": "integer", "default": 20},
+                "limit": {"type": ["integer", "string"], "default": 20},
             },
             "required": ["query"],
         },
@@ -110,10 +143,71 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "pattern": {"type": "string"},
-                "limit": {"type": "integer", "default": 200},
+                "limit": {"type": ["integer", "string"], "default": 200},
                 "module_filter": {"type": "string"},
             },
             "required": ["pattern"],
+        },
+        annotations=READ_ONLY,
+    ),
+
+    # ── Workflow Tools ──────────────────────────────────────────────────
+    Tool(
+        name="inspect_model_surface",
+        description=(
+            "Summarize the main development surface for a model: definitions, fields, "
+            "methods, views, actions, menus, security, and related files."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "model": {"type": "string"},
+                "limit": {
+                    "type": ["integer", "string"],
+                    "default": 8,
+                    "description": "Max preview items to return per section.",
+                },
+                "include_methods": {"type": "boolean", "default": True},
+                "include_related_files": {"type": "boolean", "default": True},
+                "related_files_limit": {
+                    "type": ["integer", "string"],
+                    "default": 40,
+                    "description": "Max related module files to include.",
+                },
+            },
+            "required": ["model"],
+        },
+        annotations=READ_ONLY,
+    ),
+    Tool(
+        name="locate_view_override",
+        description=(
+            "Find the best XML views and files to inspect or override for a field, button, "
+            "xml_id, or text target. Accepts either `model` or `view_ref` as scope."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "target": {"type": "string"},
+                "model": {"type": "string"},
+                "view_ref": {"type": "string"},
+                "target_type": {
+                    "type": "string",
+                    "enum": ["auto", "field", "button", "text", "xml_id"],
+                    "default": "auto",
+                },
+                "limit": {
+                    "type": ["integer", "string"],
+                    "default": 12,
+                    "description": "Max candidate views and matches to return.",
+                },
+                "context_lines": {
+                    "type": ["integer", "string"],
+                    "default": 0,
+                    "description": "Optional inline XML context around each content match.",
+                },
+            },
+            "required": ["target"],
         },
         annotations=READ_ONLY,
     ),
@@ -126,9 +220,9 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "limit": {"type": "integer", "default": 20},
+                "limit": {"type": ["integer", "string"], "default": 20},
                 "include_related_files": {"type": "boolean", "default": True},
-                "related_files_limit": {"type": "integer", "default": 60},
+                "related_files_limit": {"type": ["integer", "string"], "default": 60},
             },
             "required": ["model"],
         },
@@ -141,7 +235,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "limit": {"type": "integer", "default": 200},
+                "limit": {"type": ["integer", "string"], "default": 200},
             },
             "required": ["model"],
         },
@@ -149,13 +243,22 @@ TOOL_DEFINITIONS = [
     ),
     Tool(
         name="find_method_definition",
-        description="Find Python method definitions (def name) in Odoo files.",
+        description=(
+            "Find Python method definitions (def name) in Odoo files. "
+            "Use `context_lines` (e.g. 20-50) to include the method body inline "
+            "and avoid a follow-up read_file_lines call."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
                 "method_name": {"type": "string"},
                 "model": {"type": "string"},
-                "limit": {"type": "integer", "default": 30},
+                "limit": {"type": ["integer", "string"], "default": 30},
+                "context_lines": {
+                    "type": ["integer", "string"],
+                    "default": 0,
+                    "description": "Lines of context around the def line. Use 20-50 to read the full method body inline.",
+                },
             },
             "required": ["method_name"],
         },
@@ -168,7 +271,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "xml_id": {"type": "string"},
-                "limit": {"type": "integer", "default": 20},
+                "limit": {"type": ["integer", "string"], "default": 20},
             },
             "required": ["xml_id"],
         },
@@ -182,7 +285,7 @@ TOOL_DEFINITIONS = [
             "properties": {
                 "field_name": {"type": "string"},
                 "model": {"type": "string"},
-                "limit": {"type": "integer", "default": 100},
+                "limit": {"type": ["integer", "string"], "default": 100},
             },
             "required": ["field_name"],
         },
@@ -195,7 +298,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "limit": {"type": "integer", "default": 120},
+                "limit": {"type": ["integer", "string"], "default": 120},
             },
             "required": ["model"],
         },
@@ -210,7 +313,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "view_ref": {"type": "string"},
-                "limit": {"type": "integer", "default": 40},
+                "limit": {"type": ["integer", "string"], "default": 40},
             },
             "required": ["view_ref"],
         },
@@ -223,7 +326,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "view_ref": {"type": "string"},
-                "limit": {"type": "integer", "default": 60},
+                "limit": {"type": ["integer", "string"], "default": 60},
             },
             "required": ["view_ref"],
         },
@@ -236,7 +339,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "limit": {"type": "integer", "default": 80},
+                "limit": {"type": ["integer", "string"], "default": 80},
             },
             "required": ["model"],
         },
@@ -249,7 +352,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "view_ref": {"type": "string"},
-                "limit": {"type": "integer", "default": 120},
+                "limit": {"type": ["integer", "string"], "default": 120},
             },
             "required": ["view_ref"],
         },
@@ -277,7 +380,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "limit": {"type": "integer", "default": 80},
+                "limit": {"type": ["integer", "string"], "default": 80},
             },
             "required": ["model"],
         },
@@ -290,7 +393,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "ref": {"type": "string"},
-                "limit": {"type": "integer", "default": 120},
+                "limit": {"type": ["integer", "string"], "default": 120},
             },
             "required": ["ref"],
         },
@@ -420,7 +523,7 @@ TOOL_DEFINITIONS = [
                 "menu_name": {"type": "string"},
                 "action_ref": {"type": "string"},
                 "parent_menu_ref": {"type": "string"},
-                "sequence": {"type": "integer", "default": 10},
+                "sequence": {"type": ["integer", "string"], "default": 10},
                 "target_xml_path": {"type": "string"},
             },
             "required": ["module", "menu_id", "menu_name"],
@@ -541,4 +644,74 @@ TOOL_DEFINITIONS = [
     ),
     # TODO: lint_module — requires odoo-ls binary (https://github.com/odoo-ide/odoo-ls)
     # Planned for v1.1 release once persistent LSP daemon support is added.
+
+    # ── XML-RPC / Live Odoo Instance ────────────────────────────────────
+    Tool(
+        name="check_rpc_connection",
+        description=(
+            "Verify connectivity to a live Odoo instance over XML-RPC. "
+            "Returns server version and whether authentication succeeded. "
+            "Connection parameters (url, database, username, password) fall back "
+            "to the values saved in the dashboard config when not provided."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "url":      {"type": "string", "description": "Odoo base URL, e.g. http://localhost:8069"},
+                "database": {"type": "string", "description": "Database name"},
+                "username": {"type": "string", "description": "Odoo username (default: admin)"},
+                "password": {"type": "string", "description": "Odoo password"},
+            },
+        },
+        annotations=READ_ONLY,
+    ),
+    Tool(
+        name="execute_rpc",
+        description=(
+            "Call any Odoo model method via XML-RPC on a live instance. "
+            "Connection params fall back to dashboard config if not provided. "
+            "Use pluck='id,name' to trim fields, search='text' to filter results, "
+            "limit=N for pagination, max_chars=N to control output size."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "model":    {"type": "string", "description": "Odoo model technical name, e.g. 'res.partner'"},
+                "method":   {"type": "string", "description": "Method name, e.g. 'search_read', 'read', 'search_count', 'write', 'create'"},
+                "args": {
+                    "description": "Positional arguments as a JSON array. For search methods, first element is the domain.",
+                    "oneOf": [
+                        {"type": "array"},
+                        {"type": "string", "description": "JSON-encoded array"},
+                    ],
+                    "default": [],
+                },
+                "kwargs": {
+                    "description": "Keyword arguments as a JSON object, e.g. {\"fields\": [\"name\"], \"limit\": 20}",
+                    "oneOf": [
+                        {"type": "object"},
+                        {"type": "string", "description": "JSON-encoded object"},
+                    ],
+                    "default": {},
+                },
+                "limit":        {"type": ["integer", "string"], "description": "Convenience limit injected into kwargs for search/search_read (default: no limit)"},
+                "max_chars":    {"type": ["integer", "string"], "description": "Maximum output size in characters before truncation (default: 50000). Increase for large datasets, decrease to save context window."},
+                "search":       {"type": "string", "description": "Free-text search across all string fields in every result record. Case-insensitive substring match. Applied after the RPC call."},
+                "filter_key":   {"type": "string", "description": "Field name to filter result records by. Use with filter_value. E.g. 'pos_categ_ids' or 'name'."},
+                "filter_value": {"type": "string", "description": "Value to match against filter_key (case-insensitive substring). Records not matching are dropped."},
+                "pluck":        {
+                    "description": "Return only these fields from each result record. Reduces output size significantly.",
+                    "oneOf": [
+                        {"type": "array", "items": {"type": "string"}},
+                        {"type": "string", "description": "Comma-separated field names, e.g. 'id,name,list_price'"},
+                    ],
+                },
+                "url":      {"type": "string", "description": "Odoo base URL (overrides dashboard config)"},
+                "database": {"type": "string", "description": "Database name (overrides dashboard config)"},
+                "username": {"type": "string", "description": "Odoo username (overrides dashboard config)"},
+                "password": {"type": "string", "description": "Odoo password (overrides dashboard config)"},
+            },
+            "required": ["model", "method"],
+        },
+    ),
 ]

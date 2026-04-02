@@ -74,6 +74,23 @@ def _scope_for_module(module_path: Path, roots: list[Path]) -> str:
     return "standard"
 
 
+def _sort_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def key(record: dict[str, Any]) -> tuple[Any, ...]:
+        scope = record.get("scope")
+        scope_rank = 0 if scope == "custom" else 1 if scope == "standard" else 2
+        kind = record.get("kind")
+        kind_rank = 0 if kind == "direct" else 1 if kind == "inherit" else 2
+        return (
+            scope_rank,
+            kind_rank,
+            str(record.get("module") or ""),
+            str(record.get("xml_id") or record.get("xml_id_raw") or record.get("name") or record.get("path") or ""),
+            int(record.get("line") or 0),
+        )
+
+    return sorted(records, key=key)
+
+
 def _list_related_module_files(module_path: Path, limit: int) -> list[str]:
     patterns = [
         "models/**/*.py",
@@ -114,6 +131,35 @@ def _enrich_model_matches(
     return out
 
 
+def _find_model_python_files(model: str, roots: list[Path]) -> list[Path]:
+    name_pattern = r"_name\s*=\s*['\"]" + re.escape(model) + r"['\"]"
+    inherit_pattern = (
+        r"_inherit\s*=\s*(?:\[[^\]]*['\"]"
+        + re.escape(model)
+        + r"['\"][^\]]*\]|['\"]"
+        + re.escape(model)
+        + r"['\"])"
+    )
+    name_matches = run_rg(name_pattern, roots, ["*.py"], limit=500, fixed_strings=False)
+    inherit_matches = run_rg(inherit_pattern, roots, ["*.py"], limit=500, fixed_strings=False)
+    files = {Path(row["path"]).resolve() for row in name_matches + inherit_matches}
+    return sorted(files)
+
+
+def _collect_known_fields_for_model(model: str, roots: list[Path]) -> set[str]:
+    field_re = re.compile(r"^\s*(\w+)\s*=\s*fields\.")
+    known: set[str] = set()
+    for py_file in _find_model_python_files(model, roots):
+        try:
+            for line in py_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                match = field_re.match(line)
+                if match and not match.group(1).startswith("_"):
+                    known.add(match.group(1))
+        except OSError:
+            continue
+    return known
+
+
 def _iter_xml_files(roots: list[Path]) -> list[Path]:
     files: list[Path] = []
     for root in roots:
@@ -129,6 +175,60 @@ def _normalize_xml_id(module: str | None, xml_id: str | None) -> str | None:
     if module:
         return f"{module}.{xml_id}"
     return xml_id
+
+
+def _build_view_lookup(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    lookup: dict[str, dict[str, Any]] = {}
+    for record in records:
+        xml_id = record.get("xml_id")
+        raw_xml_id = record.get("xml_id_raw")
+        if xml_id and xml_id not in lookup:
+            lookup[xml_id] = record
+        if raw_xml_id and raw_xml_id not in lookup:
+            lookup[raw_xml_id] = record
+    return lookup
+
+
+def _resolve_view_model(
+    record: dict[str, Any],
+    view_lookup: dict[str, dict[str, Any]],
+    cache: dict[str, str | None],
+    stack: set[str] | None = None,
+) -> str | None:
+    cache_key = str(record.get("xml_id") or record.get("xml_id_raw") or record.get("path") or id(record))
+    if cache_key in cache:
+        return cache[cache_key]
+
+    if stack is None:
+        stack = set()
+    if cache_key in stack:
+        return None
+    stack.add(cache_key)
+
+    model = (record.get("model") or "").strip()
+    if model:
+        cache[cache_key] = model
+        stack.remove(cache_key)
+        return model
+
+    inherit_id = (record.get("inherit_id") or "").strip()
+    if not inherit_id:
+        cache[cache_key] = None
+        stack.remove(cache_key)
+        return None
+
+    parent = view_lookup.get(inherit_id)
+    if parent is None and "." in inherit_id:
+        parent = view_lookup.get(inherit_id.split(".", 1)[1])
+
+    resolved = (
+        _resolve_view_model(parent, view_lookup, cache, stack)
+        if parent is not None
+        else None
+    )
+    cache[cache_key] = resolved
+    stack.remove(cache_key)
+    return resolved
 
 
 def _collect_view_records(roots: list[Path]) -> list[dict[str, Any]]:
